@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: pesowise
+      POSTGRES_USER: pesowise
+      POSTGRES_PASSWORD: pesowise_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - pesowise-network
+
+  # Spring Boot Backend
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DATABASE_URL: jdbc:postgresql://postgres:5432/pesowise
+      DATABASE_USERNAME: pesowise
+      DATABASE_PASSWORD: pesowise_password
+      JWT_SECRET: your-super-secret-jwt-key-for-production-must-be-at-least-256-bits-long
+      CORS_ALLOWED_ORIGINS: http://localhost:3000,https://yourdomain.com
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    networks:
+      - pesowise-network
+    volumes:
+      - backend_uploads:/app/uploads
+
+  # React Frontend
+  frontend:
+    build:
+      context: ./web-app
+      dockerfile: Dockerfile
+      args:
+        REACT_APP_API_URL: http://localhost:8080/api
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - pesowise-network
+
+volumes:
+  postgres_data:
+  backend_uploads:
+
+networks:
+  pesowise-network:
+    driver: bridge
